@@ -2,6 +2,10 @@
 <html>
 <head>
     <title>PhyloTree App</title>
+
+    <!-- Tree library -->
+    <script src="https://cdn.jsdelivr.net/npm/phylotree@1.0.0/phylotree.js"></script>
+
     <style>
         body {
             font-family: Arial;
@@ -25,16 +29,18 @@
             border-radius: 5px;
         }
 
-        button:hover {
-            background: #0056b3;
-        }
-
         #output {
             margin-top: 20px;
             padding: 10px;
             background: white;
             border-radius: 5px;
-            white-space: pre-wrap;
+        }
+
+        #tree {
+            margin-top: 20px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -47,6 +53,10 @@
 MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFPDWQNY
 >seq2
 MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFPDWQNA
+>seq3
+MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFPDWQNV
+>seq4
+MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFPDWQNK
 </textarea>
 
 <br>
@@ -55,25 +65,26 @@ MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFPDWQNA
 <button onclick="runSimilarity()">Similarity</button>
 
 <div id="output"></div>
+<div id="tree"></div>
 
 <script>
 
+const BASE = window.location.origin;
+
 async function saveFasta() {
     let data = document.getElementById("fastaInput").value;
-
     let encoded = encodeURIComponent(data);
-
-    let res = await fetch(`/api/fasta?data=${encoded}`);
-    return await res.text();
+    await fetch(`${BASE}/api/fasta?data=${encoded}`);
 }
 
 async function runFullPipeline() {
     try {
         document.getElementById("output").innerText = "Running...";
+        document.getElementById("tree").innerHTML = "";
 
         await saveFasta();
 
-        let alignRes = await fetch("/api/align");
+        let alignRes = await fetch(`${BASE}/api/align`);
         let alignText = await alignRes.text();
 
         if (!alignText.includes("SUCCESS")) {
@@ -81,10 +92,11 @@ async function runFullPipeline() {
             return;
         }
 
-        let treeRes = await fetch("/api/tree");
-        let tree = await treeRes.text();
+        let treeRes = await fetch(`${BASE}/api/tree`);
+        let newick = await treeRes.text();
 
-        document.getElementById("output").innerText = tree;
+        renderTree(newick);
+        document.getElementById("output").innerText = newick;
 
     } catch (err) {
         console.error(err);
@@ -95,27 +107,45 @@ async function runFullPipeline() {
 async function runSimilarity() {
     try {
         document.getElementById("output").innerText = "Running similarity...";
+        document.getElementById("tree").innerHTML = "";
 
         await saveFasta();
+        await fetch(`${BASE}/api/align`);
 
-        let alignRes = await fetch("/api/align");
-        let alignText = await alignRes.text();
+        let treeRes = await fetch(`${BASE}/api/tree`);
+        let newick = await treeRes.text();
 
-        if (!alignText.includes("SUCCESS")) {
-            document.getElementById("output").innerText = alignText;
-            return;
-        }
-
-        let treeRes = await fetch("/api/tree");
-        let tree = await treeRes.text();
+        renderTree(newick);
 
         document.getElementById("output").innerText =
-            "Similarity (via phylogenetic tree):\n\n" + tree;
+            "Similarity (tree-based):\n\n" + newick;
 
     } catch (err) {
         console.error(err);
         document.getElementById("output").innerText = "Similarity failed";
     }
+}
+
+// 🔥 TREE VISUALIZATION WITH COLORS
+function renderTree(newick) {
+
+    document.getElementById("tree").innerHTML = "";
+
+    let tree = new phylotree.phylotree(newick);
+
+    tree.style_edges(function(edge) {
+        // assign random color per branch
+        edge.style.stroke = getRandomColor();
+        edge.style["stroke-width"] = 2;
+    });
+
+    tree.render("#tree");
+}
+
+// random color generator
+function getRandomColor() {
+    const colors = ["red","blue","green","purple","orange","brown","teal"];
+    return colors[Math.floor(Math.random() * colors.length)];
 }
 
 </script>
