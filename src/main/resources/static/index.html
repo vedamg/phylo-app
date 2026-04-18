@@ -54,7 +54,7 @@ MKTAYIAKQRQISFVKSHFSRQDILDLWIYHTQGYFPDWQNA
     <option value="muscle">MUSCLE</option>
 </select>
 
-<button onclick="runAnalysis()">Run Analysis</button>
+<button onclick="runAnalysis()">Run</button>
 
 <div id="output"></div>
 <svg id="tree" width="800" height="400"></svg>
@@ -88,7 +88,7 @@ async function runAnalysis() {
     drawTree(tree);
 }
 
-// 🔥 CLEAN TREE DRAW WITH CONSISTENT COLORS
+// 🔥 TREE WITH FIXED COLOR PROPAGATION
 function drawTree(newick) {
 
     d3.select("#tree").selectAll("*").remove();
@@ -105,10 +105,12 @@ function drawTree(newick) {
 
     const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-    // Assign color per branch group
-    root.children?.forEach((child, i) => {
-        assignColor(child, colorScale(i));
-    });
+    // Assign color to each top-level branch
+    if (root.children) {
+        root.children.forEach((child, i) => {
+            assignColor(child, colorScale(i));
+        });
+    }
 
     function assignColor(node, color) {
         node.data.color = color;
@@ -117,7 +119,7 @@ function drawTree(newick) {
         }
     }
 
-    // links
+    // links (FIXED: correct color usage)
     g.selectAll("line")
         .data(root.links())
         .enter()
